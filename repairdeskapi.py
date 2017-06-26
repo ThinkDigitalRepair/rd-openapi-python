@@ -21,3 +21,12 @@ def get_customers():
     url = base_url + "customers" + api_key_string
     customers = requests.get(url)
     return customers
+
+class Customer(object):
+    """A customer in the RD System"""
+
+    def __init__(self, name):
+        self.name = name
+
+    def say_name(self):
+        print(self.name)
