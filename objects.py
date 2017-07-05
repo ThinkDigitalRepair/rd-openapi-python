@@ -4,23 +4,23 @@ import logging
 class Customer(object):
     """A customer in the RD System:
     Attributes are :
-                    fullName
-cid
-phone
-mobile
-address1
-address2
-postcode
-city
-state
-country
-email
-organization
-refered_by
-driving_licence
-contact_person
-tax_number
-network
+    fullName
+    cid
+    phone
+    mobile
+    address1
+    address2
+    postcode
+    city
+    state
+    country
+    email
+    organization
+    refered_by
+    driving_licence
+    contact_person
+    tax_number
+    network
     """
     def __init__(self, customer):
         """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email, orgonization,
@@ -43,3 +43,5 @@ network
         self.contact_person = customer['contact_person']
         self.tax_number = customer['tax_number']
         self.network = customer['network']
+
+# Todo: Create reverse function

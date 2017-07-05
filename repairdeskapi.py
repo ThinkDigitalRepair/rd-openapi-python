@@ -35,7 +35,17 @@ def get_customers():
     """
     url = base_url + "customers" + api_key_string
     customer_list = requests.get(url)
-    # print(list(customers.json().values())[1])
     for c in list(customer_list.json().values())[1]:
         customers.append(objects.Customer(c))
+
+
+def search(keyword):
+    # search function is broken on openAPI
+    pass
+
+
+def post_customers(c_list):
+    for c in c_list:
+
+        pass
     return customers
