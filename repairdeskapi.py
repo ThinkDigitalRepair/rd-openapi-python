@@ -35,8 +35,11 @@ def get_customers():
     """
     url = base_url + "customers" + api_key_string
     customer_list = requests.get(url)
+
     for c in list(customer_list.json().values())[1]:
         customers.append(objects.Customer(c))
+
+    return customers
 
 
 def search(keyword):
@@ -45,7 +48,25 @@ def search(keyword):
 
 
 def post_customers(c_list):
-    for c in c_list:
+    pass
 
+    for c in c_list:
         pass
     return customers
+
+
+def get_tickets(page_size=25, page=0, status=""):
+    # type: () -> list[]
+
+    """Returns a list of the tickets.
+    status types are "In Progress"
+    
+    :rtype: list
+    """
+    url = base_url + "tickets" + api_key_string
+    customer_list = requests.get(url)
+
+    for c in list(customer_list.json().values())[1]:
+        customers.append(objects.Customer(c))
+
+    return tickets
