@@ -7,6 +7,7 @@ import objects
 base_url = "https://api.repairdesk.co/api/web/v1/"
 api_key, api_key_string = "", ""
 customers = []
+tickets = []
 
 
 # sample_url https://api.repairdesk.co/api/web/v1/customers?api_key=YOUR_KEY
@@ -64,9 +65,18 @@ def get_tickets(page_size=25, page=0, status=""):
     :rtype: list
     """
     url = base_url + "tickets" + api_key_string
-    customer_list = requests.get(url)
+    ticket_list = requests.get(url)
+    """
+        TotalRecords
+        fromDate
+        ticketData
+        End of Program
+    """
+    ticket_object = objects.Tickets(ticket_list)
 
-    for c in list(customer_list.json().values())[1]:
-        customers.append(objects.Customer(c))
+    # Add ticket information to array
+
+
 
     return tickets
+
