@@ -1346,11 +1346,7 @@ class Tickets(object):
         i = 0
         for a, b in zip(ticket_object, ticket_data):
             #print (a + "| " + b)
-            print(type(b))
-            print("\n\n")
-            i += 1
-            # for d in ticket_data
-            # pass
+            pass
 
 
 class Summary(object):

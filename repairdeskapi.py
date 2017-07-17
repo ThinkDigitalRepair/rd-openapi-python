@@ -2,6 +2,15 @@
 import json
 import requests
 import objects
+import logging as log
+from pathlib import Path
+
+ticketfile = "ticketfile.json"
+
+log.basicConfig(filename='log.log',
+                format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s', \
+                datefmt='%d-%m-%Y:%H:%M:%S', \
+                level=log.DEBUG)
 
 # script-wide variables
 base_url = "https://api.repairdesk.co/api/web/v1/"
@@ -30,14 +39,16 @@ def get_api_key(self):
 
 
 def get_customers():
-    # type: () -> list[]
     """Returns a list of only the customers in the JSON string.
     :rtype: list
     """
     url = base_url + "customers" + api_key_string
     customer_list = requests.get(url)
+    log.info(customer_list)
 
-    for c in list(customer_list.json().values())[1]:
+    customer_list = customer_list.json()['data']
+    # add customers to list
+    for c in customer_list:
         customers.append(objects.Customer(c))
 
     return customers
@@ -51,32 +62,28 @@ def search(keyword):
 def post_customers(c_list):
     pass
 
-    for c in c_list:
-        pass
-    return customers
-
 
 def get_tickets(page_size=25, page=0, status=""):
-    # type: () -> list[]
-
     """Returns a list of the tickets.
-    status types are "In Progress"
-    
-    :rtype: list
-    """
+    status types are "In Progress\""""
+
+    if not Path(ticketfile).is_file():
+        with open(ticketfile, "w+") as tf:
+            tf.write("TEXT!")
+            print(tf)
+
     url = base_url + "tickets" + api_key_string
-    ticket_list = requests.get(url)
+    log.info("ticket_list type: %s", type(requests.get(url).json()))
+    ticket_list = requests.get(url).json()
     """
         TotalRecords
         fromDate
         ticketData
         End of Program
     """
-    ticket_object = objects.Tickets(ticket_list)
+    log.info("ticket len: %s", len(ticket_list))
+    for i in ticket_list:
+        log.info("type of %s = %s", i, type(i))
 
     # Add ticket information to array
-
-
-
     return tickets
-
