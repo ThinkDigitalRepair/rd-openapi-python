@@ -39,33 +39,38 @@ class Customer(object):
     network"""
 
     def __init__(self, customer):
-        """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email, orgonization,
-                 refered_by, driving_licence, contact_person, tax_number, network"""
-        # print("fullname = ")
-        # print (str(customer['fullName']))
-        self.fullname = customer['fullName'].encode('utf-8')
-        self.phone = customer['phone']
-        self.cid = customer['cid']
-        self.phone = customer['phone']
-        self.mobile = customer['mobile']
-        self.address1 = customer['address1']
-        self.address2 = customer['address2']
-        self.postal_code = customer['postcode']
-        self.city = customer['city']
-        self.state = customer['state']
-        self.country = customer['country']
-        self.email = customer['email']
-        self.organization = customer['orgonization']
-        self.referred_by = customer['refered_by']
-        self.driving_license = customer['driving_licence']
-        self.contact_person = customer['contact_person']
-        self.tax_number = customer['tax_number']
-        self.network = customer['network']
+        for key in customer:
+            self.__dict__[key] = customer[key]
+
+        #
+        #
+        # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email, orgonization,
+        #          refered_by, driving_licence, contact_person, tax_number, network"""
+        # # print("fullname = ")
+        # # print (str(customer['fullName']))
+        # self.fullname = customer['fullName'].encode('utf-8')
+        # self.phone = customer['phone']
+        # self.cid = customer['cid']
+        # self.phone = customer['phone']
+        # self.mobile = customer['mobile']
+        # self.address1 = customer['address1']
+        # self.address2 = customer['address2']
+        # self.postal_code = customer['postcode']
+        # self.city = customer['city']
+        # self.state = customer['state']
+        # self.country = customer['country']
+        # self.email = customer['email']
+        # self.organization = customer['orgonization']
+        # self.referred_by = customer['refered_by']
+        # self.driving_license = customer['driving_licence']
+        # self.contact_person = customer['contact_person']
+        # self.tax_number = customer['tax_number']
+        # self.network = customer['network']
 
 
 # Todo: Create reverse function
 
-class Tickets(object):
+class Ticket(object):
     ticket_list = []
     devices = []
     ticket_data = {}
@@ -1345,8 +1350,15 @@ class Tickets(object):
         }
         i = 0
         for a, b in zip(ticket_object, ticket_data):
-            #print (a + "| " + b)
+            # print (a + "| " + b)
             pass
+
+
+class Invoice(object):
+    def __init__(self, invoice):
+        for key in invoice:
+            self.__dict__[key] = invoice[key]
+            print("key: {0}\nvalue: {1}".format(key, self.__dict__[key]))
 
 
 class Summary(object):
@@ -1369,7 +1381,7 @@ class Summary(object):
 class Devices:
     device = []
 
-    def __init__():
+    def __init__(self):
         global device
 
     def append(self, device_to_append):
@@ -1397,5 +1409,8 @@ class Devices:
 class RepairProdItems():
     def __init__(self, name, device_id):
         repair_prod_item = {"name": name, "id": device_id}
-        print ("New repair_prod_item initialized: " + repair_prod_item['name'] + ": " +
-               repair_prod_item['id'])
+        print("New repair_prod_item initialized: " + repair_prod_item['name'] + ": " +
+              repair_prod_item['id'])
+
+
+
