@@ -93,3 +93,10 @@ def get(url_string_snippet, args=()):
     payload = {'api_key': api_key}
     payload.update(args)
     return requests.get(base_url+url_string_snippet, params=payload).json()
+
+def get_csv():
+    # TODO: Convert wget string to requests string for CSV file. PHPSESSID is necessary for grabbing of files
+    # TODO: Find out if there is a way to crawl/ index website endpoints and files with a sessionID
+    #wget - O
+    #result.csv - -no - cookies - -header = 'Cookie:PHPSESSID=ofpt96b2abpoluutl2sb7hp9e2' 'https://app.repairdesk.co/index.php?r=invoice/export2CSV&keyword=&prod_type=&status=&to=&from=&pagesize=50'"
+    pass
