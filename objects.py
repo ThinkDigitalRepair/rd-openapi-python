@@ -41,6 +41,7 @@ class Customer(object):
     def __init__(self, customer):
         for key in customer:
             self.__dict__[key] = customer[key]
+            print(key)
 
         #
         #
