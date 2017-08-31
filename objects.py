@@ -1,3 +1,6 @@
+import vobject
+
+
 class Customer(object):
     """A customer in the RD System:
     Attributes are :
@@ -20,7 +23,6 @@ class Customer(object):
     network
     """
 
-    fullname = ""
     """cid
     phone
     mobile
@@ -43,30 +45,54 @@ class Customer(object):
             self.__dict__[key] = customer[key]
             print(key)
 
-        #
-        #
-        # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email, orgonization,
-        #          refered_by, driving_licence, contact_person, tax_number, network"""
-        # # print("fullname = ")
-        # # print (str(customer['fullName']))
-        # self.fullname = customer['fullName'].encode('utf-8')
-        # self.phone = customer['phone']
-        # self.cid = customer['cid']
-        # self.phone = customer['phone']
-        # self.mobile = customer['mobile']
-        # self.address1 = customer['address1']
-        # self.address2 = customer['address2']
-        # self.postal_code = customer['postcode']
-        # self.city = customer['city']
-        # self.state = customer['state']
-        # self.country = customer['country']
-        # self.email = customer['email']
-        # self.organization = customer['orgonization']
-        # self.referred_by = customer['refered_by']
-        # self.driving_license = customer['driving_licence']
-        # self.contact_person = customer['contact_person']
-        # self.tax_number = customer['tax_number']
-        # self.network = customer['network']
+            #
+            #
+            # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email, orgonization,
+            #          refered_by, driving_licence, contact_person, tax_number, network"""
+
+    def to_vcf(self):
+
+        j = vobject.vCard()
+        j.add('n')
+
+        if self['last_name'] and self['first_name']:  # Make sure customer has a first and last name.
+            j.n.value = vobject.vcard.Name(family=self['last_name'], given=self['first_name'])
+        elif self['last_name'] and not self['first_name']:
+            print("Only one name!!!")
+            j.n.value = vobject.vcard.Name(given=self['first_name'])
+
+        j.add('fn')
+        j.fn.value = self['fullName']
+        j.add('email')
+        j.email.value = self['email']
+        j.email.type_param = 'Personal'
+
+        if self['mobile']:
+            j.add('tel')
+            j.tel.value = self['mobile']
+            j.tel.type_param = 'mobile'
+
+        if self['phone']:
+            j.add('tel')
+            j.tel.value = self['phone']
+            j.tel.type_param = 'Secondary'
+
+        if self['phone']:
+            j.add('tel')
+            j.tel.value = self['phone']
+            j.tel.type_param = 'Secondary'
+
+        if self['phone']:
+            j.add('tel')
+            j.tel.value = self['phone']
+            j.tel.type_param = 'Secondary'
+
+        j.prettyPrint()
+        j.serialize()
+
+        with open('JonathanWhite.vcf', 'a') as vcf:
+            vcf.write(j.serialize())
+            vcf.close()
 
 
 # Todo: Create reverse function
@@ -1412,6 +1438,3 @@ class RepairProdItems():
         repair_prod_item = {"name": name, "id": device_id}
         print("New repair_prod_item initialized: " + repair_prod_item['name'] + ": " +
               repair_prod_item['id'])
-
-
-

@@ -4,6 +4,7 @@ import requests
 import objects
 import logging as log
 from pathlib import Path
+from datetime import datetime
 
 ticketfile = "ticketfile.json"
 
@@ -17,6 +18,8 @@ base_url = "https://api.repairdesk.co/api/web/v1/"
 api_key, api_key_string = "", ""
 customers = []
 tickets = []
+save_offline = False  # Indicates whether to save to local file or pull from online.
+read_offline = False
 
 
 # sample_url https://api.repairdesk.co/api/web/v1/customers?api_key=YOUR_KEY
@@ -38,12 +41,17 @@ def get_api_key(self):
     return self.api_key
 
 
+def get_customer(customer_id):
+    customer_json = get("customers/{0}".format(customer_id))
+    return customer_json
+
+
 def get_customers():
     """Returns a list of only the customers in the JSON string.
     :rtype: list
     """
     # add customers to list
-    return get("customers")['data']
+    return get("customers")
 
 
 def search(keyword):
@@ -52,6 +60,7 @@ def search(keyword):
 
 
 def post_customers(c_list):
+    requests.put()
     pass
 
 
@@ -61,18 +70,58 @@ def get_tickets(page_size=25, page=0, status=""):
     return get("tickets")['data']['ticketData']
 
 
-def get_invoices(_filter_=1):
-    return get("invoice", {'filter': _filter_})['data']['invoiceData']
+def get_invoices(days_ago=7):
+    """
+
+    :param days_ago: If you want to get
+    yesterday, 7 days, 30 days pass parameter named “filter” 1 for yesterday 7 or 30 etc. If you want to get
+    all invoices send 0 in this parameter.
+    :return: returns invoices for past 7 days by default if no parameter is passed for the search.
+
+    """
+    return get("invoice", {'filter': days_ago})['data']['invoiceData']
+
+
+def get_invoice(id):
+    """
+
+    :return: returns invoice details.
+
+    """
+    return get("invoices/{0}".format(id))['data']
 
 
 def get(url_string_snippet, args=()):
+    """
+
+    :rtype: json
+    :param args: dict containing keys and values for the URL
+    :type url_string_snippet: string
+    """
+    filename = url_string_snippet.replace('/', '') + ".json"
     payload = {'api_key': api_key}
     payload.update(args)
-    result = requests.get(base_url + url_string_snippet, params=payload)
-    print(result.ok)
-    if "No Result Found" not in result.text:
-        return requests.get(base_url + url_string_snippet, params=payload).json()
-    else:
+
+    if not read_offline:  # Pull from online
+        result = requests.get(base_url + url_string_snippet, params=payload)
+        url = result.url
+        print(url)
+    else:  # Pull from offline
+        with open(filename, 'r') as file:
+            result = json.load(file)['data']
+        return result
+
+    if not read_offline and "No Result Found" not in result.text:  # If there is data to return
+        # TODO: Change this line to account for offline file
+        result = requests.get(base_url + url_string_snippet, params=payload).json()
+
+        with open(filename, "w+") as out:  # Save data to file
+            # out.write(datetime.now().__str__() + "\n")
+            out.write(json.dumps(result))
+            out.close()
+
+        return result
+    else:  # If there is no data to return
         print("No results found with this criteria.")
         return 0
 
