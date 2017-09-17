@@ -1,7 +1,6 @@
 """python wrapper for RepairDesk OpenAPI"""
-import json
-import requests
-import objects
+import json, os, requests
+from objects import *
 import logging as log
 from pathlib import Path
 from datetime import datetime
@@ -16,7 +15,7 @@ log.basicConfig(filename='log.log',
 # script-wide variables
 base_url = "https://api.repairdesk.co/api/web/v1/"
 api_key, api_key_string = "", ""
-customers = []
+
 tickets = []
 save_offline = False  # Indicates whether to save to local file or pull from online.
 read_offline = False
@@ -43,15 +42,29 @@ def get_api_key(self):
 
 def get_customer(customer_id):
     customer_json = get("customers/{0}".format(customer_id))
-    return customer_json
+    return Customer(customer_json)
 
 
-def get_customers():
+def get_customers(filter="", value=""):
     """Returns a list of only the customers in the JSON string.
     :rtype: list
     """
     # add customers to list
-    return get("customers")
+    result = get("customers")
+    customers = []
+
+    for customer in result['data']:
+        if filter:
+            if filter in customer:
+                if value in customer[filter]:
+                    customers.append(Customer(customer))
+            else:
+                raise ValueError("Failed at Level 2")
+        elif not filter:
+            customers.append(Customer(customer))
+        else:
+            raise Exception("Something is wrong here!")
+    return customers
 
 
 def search(keyword):
@@ -98,23 +111,29 @@ def get(url_string_snippet, args=()):
     :param args: dict containing keys and values for the URL
     :type url_string_snippet: string
     """
-    filename = url_string_snippet.replace('/', '') + ".json"
+    filename = "./" + url_string_snippet + ".json"
     payload = {'api_key': api_key}
     payload.update(args)
 
-    if not read_offline:  # Pull from online
+    if read_offline:  # Pull from online
+        if os.path.exists(filename):
+            with open(filename, 'r') as file:
+                result = json.load(file)
+            return result
+        else:
+            raise FileNotFoundError("{0} not found! Try pulling from online first.".format(filename))
+
+
+    else:  # Pull from offline
         result = requests.get(base_url + url_string_snippet, params=payload)
         url = result.url
         print(url)
-    else:  # Pull from offline
-        with open(filename, 'r') as file:
-            result = json.load(file)['data']
-        return result
 
     if not read_offline and "No Result Found" not in result.text:  # If there is data to return
         # TODO: Change this line to account for offline file
         result = requests.get(base_url + url_string_snippet, params=payload).json()
 
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, "w+") as out:  # Save data to file
             # out.write(datetime.now().__str__() + "\n")
             out.write(json.dumps(result))

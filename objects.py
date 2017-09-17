@@ -1,4 +1,4 @@
-import vobject
+import vobject, os
 
 
 class Customer(object):
@@ -41,59 +41,74 @@ class Customer(object):
     network"""
 
     def __init__(self, customer):
-        for key in customer:
-            self.__dict__[key] = customer[key]
-            print(key)
-
-            #
-            #
-            # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email, orgonization,
-            #          refered_by, driving_licence, contact_person, tax_number, network"""
+        if 'data' in customer:
+            for key in customer['data']:
+                self.__dict__[key] = customer['data'][key]
+        else:
+            for key in customer:
+                self.__dict__[key] = customer[key]
+                #
+                #
+                # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email, orgonization,
+                #          refered_by, driving_licence, contact_person, tax_number, network"""
 
     def to_vcf(self):
-
         j = vobject.vCard()
         j.add('n')
+        if 'first_name' in self.__dict__:
+            first_name, last_name = self.__getattribute__('first_name'), self.__getattribute__('last_name')
+        else:
+            name = self.__getattribute__('fullName').split()
+            first_name, last_name = name[0], name[1] if len(name) > 1 else ''
 
-        if self['last_name'] and self['first_name']:  # Make sure customer has a first and last name.
-            j.n.value = vobject.vcard.Name(family=self['last_name'], given=self['first_name'])
-        elif self['last_name'] and not self['first_name']:
-            print("Only one name!!!")
-            j.n.value = vobject.vcard.Name(given=self['first_name'])
+        j.n.value = vobject.vcard.Name(family=last_name, given=first_name)
+        j.add('fn')  # required field
+        j.fn.value = "{0} {1}".format(first_name, last_name)  # Set name
 
-        j.add('fn')
-        j.fn.value = self['fullName']
-        j.add('email')
-        j.email.value = self['email']
-        j.email.type_param = 'Personal'
+        def add_value(value_name, value, value_type=''):
 
-        if self['mobile']:
-            j.add('tel')
-            j.tel.value = self['mobile']
-            j.tel.type_param = 'mobile'
+            """
 
-        if self['phone']:
-            j.add('tel')
-            j.tel.value = self['phone']
-            j.tel.type_param = 'Secondary'
+            :param value_name: vObject attribute
+            :param value: value of the attribute
+            :param value_type: type parameter
+            """
 
-        if self['phone']:
-            j.add('tel')
-            j.tel.value = self['phone']
-            j.tel.type_param = 'Secondary'
+            obj = j.add(value_name)  # adds a new element to j,
+            obj.value = value
+            obj.type_param = value_type
+            return obj
 
-        if self['phone']:
-            j.add('tel')
-            j.tel.value = self['phone']
-            j.tel.type_param = 'Secondary'
+        a = add_value('tel', self.__getattribute__('mobile').replace(' ', '').replace('-', ''),
+                      'Mobile')  # removing spaces
+        b = add_value('tel', self.__getattribute__('phone').replace(" ", ""), 'Contact Number')  # removing spaces
+        c = add_value('email', self.__getattribute__('email'), 'Home')
 
         j.prettyPrint()
         j.serialize()
 
-        with open('JonathanWhite.vcf', 'a') as vcf:
+        filename = './contacts/{0}{1}.vcf'.format(first_name, last_name)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        with open(filename, 'w') as vcf:
             vcf.write(j.serialize())
             vcf.close()
 
+    def __str__(self):
+        string = ""
+
+        for key in self.__dict__:
+            if isinstance(self.__getattribute__(key), type("")):
+                value = self.__getattribute__(key)
+            else:
+                for key2 in self.__getattribute__(key):
+                    if isinstance(key2, type("")):
+                        value = key2 + ": " + self.__getattribute__(key)[key2]
+
+            string += key + ": " + value + "\n"
+        return string
+
+    def __repr__(self):
+        return self.__str__()
 
 # Todo: Create reverse function
 
