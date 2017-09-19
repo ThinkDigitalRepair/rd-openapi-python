@@ -1,6 +1,7 @@
 import vobject, os
 
 
+# Todo: Create reverse function
 class Customer(object):
     """A customer in the RD System:
     Attributes are :
@@ -93,6 +94,9 @@ class Customer(object):
             vcf.write(j.serialize())
             vcf.close()
 
+    def __repr__(self):
+        return self.__str__()
+
     def __str__(self):
         string = ""
 
@@ -107,10 +111,65 @@ class Customer(object):
             string += key + ": " + value + "\n"
         return string
 
-    def __repr__(self):
-        return self.__str__()
 
-# Todo: Create reverse function
+class Devices:
+    device = []
+
+    def __init__(self):
+        global device
+
+    def append(self, device_to_append):
+        """
+
+        :type device_to_append: int
+        """
+        device.append(device_to_append)
+
+    def get(self, dnum):
+        """
+
+        :type dnum: int
+        """
+        return device[dnum]
+
+    def remove(self, dnum):
+        """
+
+        :type dnum: int
+        """
+        device.remove(dnum)
+
+
+class Invoice(object):
+    def __init__(self, invoice):
+        for key in invoice:
+            self.__dict__[key] = invoice[key]
+            print("key: {0}\nvalue: {1}".format(key, self.__dict__[key]))
+
+
+class RepairProdItems():
+    def __init__(self, name, device_id):
+        repair_prod_item = {"name": name, "id": device_id}
+        print("New repair_prod_item initialized: " + repair_prod_item['name'] + ": " +
+              repair_prod_item['id'])
+
+
+class Summary(object):
+    ID = 0
+    order_id = ""
+    total = 0
+    how_did_u_find_us = ""
+    created_date = 0
+    repair_collected = 0
+
+    def __init__(self, identification, order_id, total, hdufu, created_date, repair_collected):
+        self.ID = identification
+        self.order_id = order_id
+        self.total = total
+        self.how_did_u_find_us = hdufu
+        self.created_date = created_date
+        self.repair_collected = repair_collected
+
 
 class Ticket(object):
     ticket_list = []
@@ -1394,62 +1453,3 @@ class Ticket(object):
         for a, b in zip(ticket_object, ticket_data):
             # print (a + "| " + b)
             pass
-
-
-class Invoice(object):
-    def __init__(self, invoice):
-        for key in invoice:
-            self.__dict__[key] = invoice[key]
-            print("key: {0}\nvalue: {1}".format(key, self.__dict__[key]))
-
-
-class Summary(object):
-    ID = 0
-    order_id = ""
-    total = 0
-    how_did_u_find_us = ""
-    created_date = 0
-    repair_collected = 0
-
-    def __init__(self, identification, order_id, total, hdufu, created_date, repair_collected):
-        self.ID = identification
-        self.order_id = order_id
-        self.total = total
-        self.how_did_u_find_us = hdufu
-        self.created_date = created_date
-        self.repair_collected = repair_collected
-
-
-class Devices:
-    device = []
-
-    def __init__(self):
-        global device
-
-    def append(self, device_to_append):
-        """
-
-        :type device_to_append: int
-        """
-        device.append(device_to_append)
-
-    def get(self, dnum):
-        """
-
-        :type dnum: int
-        """
-        return device[dnum]
-
-    def remove(self, dnum):
-        """
-
-        :type dnum: int
-        """
-        device.remove(dnum)
-
-
-class RepairProdItems():
-    def __init__(self, name, device_id):
-        repair_prod_item = {"name": name, "id": device_id}
-        print("New repair_prod_item initialized: " + repair_prod_item['name'] + ": " +
-              repair_prod_item['id'])
