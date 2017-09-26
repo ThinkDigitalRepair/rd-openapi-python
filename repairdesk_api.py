@@ -17,17 +17,34 @@ base_url = "https://api.repairdesk.co/api/web/v1/"
 api_key, api_key_string = "", ""
 
 tickets = []
-save_offline = False  # Indicates whether to save to local file or pull from online.
+save_offline = True  # Indicates whether to save to local file
 read_offline = False
 
 
 # sample_url https://api.repairdesk.co/api/web/v1/customers?api_key=YOUR_KEY
 
+def __delete(url_string_snippet, record_number):
+    assert type(record_number) is int or type(record_number) is str
+    result = requests.delete(base_url + url_string_snippet + "/" + str(record_number), params={'api_key': api_key})
+    print(result.url)
+    return result
+
+
+def delete_parts(*argv):
+    result = []
+
+    for part in argv:
+        result.append(__delete("parts", part))
+
+    return result
+
+
 def get_api_key(self):
     return self.api_key
 
 
-def get(url_string_snippet, args=()):
+def __get(url_string_snippet, args=()):
+    # in case of errors, I removed return statements to have just one at the end of the function
     """
 
     :rtype: json
@@ -42,40 +59,40 @@ def get(url_string_snippet, args=()):
         if os.path.exists(filename):
             with open(filename, 'r') as file:
                 result = json.load(file)
-            return result
+                # return result
         else:
             raise FileNotFoundError("{0} not found! Try pulling from online first.".format(filename))
-    else:  # Pull from offline
+    else:  # Pull from online
         result = requests.get(base_url + url_string_snippet, params=payload)
         url = result.url
         print(url)
 
-    if not read_offline and "No Result Found" not in result.text:  # If there is data to return
-        # TODO: Change this line to account for offline file
-        result = requests.get(base_url + url_string_snippet, params=payload).json()
+        # Write data to disk
+        if save_offline and "No Result Found" not in result.text:
+            result = requests.get(base_url + url_string_snippet, params=payload).json()
 
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        with open(filename, "w+") as out:  # Save data to file
-            # out.write(datetime.now().__str__() + "\n")
-            out.write(json.dumps(result))
-            out.close()
+            # Create file path
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            with open(filename, "w+") as out:  # Save data to file
+                # out.write(datetime.now().__str__() + "\n")
+                out.write(json.dumps(result))
+                out.close()
+        else:  # If there is no data to return
+            print("No results found with this criteria.")
+            result = 0
 
-        return result
-    else:  # If there is no data to return
-        print("No results found with this criteria.")
-        return 0
-
+    return result
 
 def get_csv():
     # TODO: Convert wget string to requests string for CSV file. PHPSESSID is necessary for grabbing of files
     # TODO: Find out if there is a way to crawl/ index website endpoints and files with a sessionID
     # wget - O
     # result.csv - -no - cookies - -header = 'Cookie:PHPSESSID=ofpt96b2abpoluutl2sb7hp9e2' 'https://app.repairdesk.co/index.php?r=invoice/export2CSV&keyword=&prod_type=&status=&to=&from=&pagesize=50'"
-    pass
+    return
 
 
 def get_customer(customer_id):
-    customer_json = get("customers/{0}".format(customer_id))
+    customer_json = __get("customers/{0}".format(customer_id))
     return Customer(customer_json)
 
 
@@ -84,7 +101,7 @@ def get_customers(filter="", value=""):
     :rtype: list
     """
     # add customers to list
-    result = get("customers")
+    result = __get("customers")
     customers = []
 
     for customer in result['data']:
@@ -101,34 +118,66 @@ def get_customers(filter="", value=""):
     return customers
 
 
+def get_inventory():
+    """Returns a list of items in inventory"""
+    try:
+        return __get("inventory")['data']
+    except KeyError:
+        print("There was an error with the data returned.")
+        return
+
+
 def get_invoice(id):
     """
 
     :return: returns invoice details.
 
     """
-    return get("invoices/{0}".format(id))['data']
+    return Invoice(__get("invoices/{0}".format(id))['data'])
 
 
-def get_invoices(days_ago=7):
+def get_invoices(days_ago=7, filter="", value=""):
     """
 
-    :param days_ago: If you want to get
-    yesterday, 7 days, 30 days pass parameter named “filter” 1 for yesterday 7 or 30 etc. If you want to get
+    :param days_ago: If you want to __get
+    yesterday, 7 days, 30 days pass parameter named “filter” 1 for yesterday 7 or 30 etc. If you want to __get
     all invoices send 0 in this parameter.
     :return: returns invoices for past 7 days by default if no parameter is passed for the search.
 
     """
-    return get("invoice", {'filter': days_ago})['data']['invoiceData']
+
+    result = __get("invoice", {'filter': days_ago})['data']['invoiceData']
+    invoices = []
+
+    for invoice in result:
+        if filter:
+            if filter in invoice:
+                if value in invoice[filter]:
+                    invoices.append(Invoice(invoice))
+            else:
+                raise ValueError("Failed at Level 2")
+        elif not filter:
+            invoices.append(Invoice(invoice))
+        else:
+            raise Exception("Something is wrong here!")
+    return invoices
+
+
+def get_parts():
+    return __get("parts")['data']
 
 
 def get_tickets(page_size=25, page=0, status=""):
     """Returns a list of the tickets.
         status types are "In Progress\""""
-    return get("tickets")['data']['ticketData']
+    try:
+        return __get("tickets")['data']['ticketData']
+    except KeyError:
+        print("There was an error with the data returned.")
+        return
 
 
-def post(url_string_snippet, args=()):
+def __post(url_string_snippet, args=()):
     payload = {'api_key': api_key}
     payload.update(args)
 
@@ -136,23 +185,30 @@ def post(url_string_snippet, args=()):
 
 
 def post_customer(customer):
-    return post(json.dumps(customer))
+    return __post(json.dumps(customer))
 
 
-def put(url_string_snippet, _data):
+def __put(url_string_snippet, data):
     payload = {'api_key': api_key}
-    print(base_url + url_string_snippet + "{0}".format(payload))
-    print("data = {0}".format(_data))
-    return requests.put(base_url + url_string_snippet, params=payload, json=_data)
+
+    print("data = {0}".format(data))
+
+    result = requests.put(base_url + url_string_snippet, params=payload, json=data)
+    print(result.url)
+    return result
 
 
 def put_customer(customer):
-    return put("customers/{0}".format(customer.__dict__['cid']), customer.__dict__)
+    return __put("customers/{0}".format(customer.__dict__['cid']), customer.__dict__)
+
+
+def put_invoice(invoice):
+    return __put("invoices/{0}".format(invoice.__dict__['summary']['id']), invoice.__dict__)
 
 
 def search(keyword):
     # search function is broken on openAPI
-    pass
+    return
 
 
 def set_api_key(key):
