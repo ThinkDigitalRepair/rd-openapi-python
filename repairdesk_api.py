@@ -79,7 +79,7 @@ def __get(url_string_snippet, args=()):
                 out.close()
         else:  # If there is no data to return
             print("No results found with this criteria.")
-            result = 0
+            result = False
 
     return result
 
@@ -118,6 +118,14 @@ def get_customers(filter="", value=""):
     return customers
 
 
+def get_devices():
+    return
+
+
+def get_employees():
+    return __get("employees")
+
+
 def get_inventory():
     """Returns a list of items in inventory"""
     try:
@@ -129,12 +137,14 @@ def get_inventory():
 
 def get_invoice(id):
     """
-
     :return: returns invoice details.
-
     """
-    return Invoice(__get("invoices/{0}".format(id))['data'])
-
+    result = __get("invoices/{0}".format(id))
+    if result:
+        result = Invoice(result['data'])
+        return result
+    else:
+        print("No Results")
 
 def get_invoices(days_ago=7, filter="", value=""):
     """
@@ -146,7 +156,7 @@ def get_invoices(days_ago=7, filter="", value=""):
 
     """
 
-    result = __get("invoice", {'filter': days_ago})['data']['invoiceData']
+    result = __get("invoices", {'filter': days_ago})['data']['invoiceData']
     invoices = []
 
     for invoice in result:
