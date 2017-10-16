@@ -43,29 +43,30 @@ def get_api_key(self):
     return self.api_key
 
 
-def __get(url_string_snippet, args=()):
-    # in case of errors, I removed return statements to have just one at the end of the function
+def __get(url_string_snippet, **kwargs):
+
     """
 
     :rtype: json
-    :param args: dict containing keys and values for the URL
+    :param kwargs: dict containing keys and values for the URL
     :type url_string_snippet: string
     """
+    print_url = True
     filename = "./" + url_string_snippet + ".json"
     payload = {'api_key': api_key}
-    payload.update(args)
+    payload.update(kwargs)
 
     if read_offline:  # Pull from online
         if os.path.exists(filename):
             with open(filename, 'r') as file:
                 result = json.load(file)
-                # return result
+                if print_url: print(filename)
         else:
             raise FileNotFoundError("{0} not found! Try pulling from online first.".format(filename))
     else:  # Pull from online
         result = requests.get(base_url + url_string_snippet, params=payload)
         url = result.url
-        print(url)
+        if print_url: print(url)
 
         # Write data to disk
         if save_offline and "No Result Found" not in result.text:
@@ -79,9 +80,10 @@ def __get(url_string_snippet, args=()):
                 out.close()
         else:  # If there is no data to return
             print("No results found with this criteria.")
-            result = False
+            result = {}
 
     return result
+
 
 def get_csv():
     # TODO: Convert wget string to requests string for CSV file. PHPSESSID is necessary for grabbing of files
@@ -107,10 +109,12 @@ def get_customers(filter="", value=""):
     for customer in result['data']:
         if filter:
             if filter in customer:
-                if value in customer[filter]:
+                if value.replace(' ', '') in customer[filter].replace(' ', ''):
                     customers.append(Customer(customer))
             else:
-                raise ValueError("Failed at Level 2")
+                print("{0} is not a valid key".format(filter))
+                print("Valid keys are {0}".format(customer.keys()))
+                break
         elif not filter:
             customers.append(Customer(customer))
         else:
@@ -132,21 +136,23 @@ def get_inventory():
         return __get("inventory")['data']
     except KeyError:
         print("There was an error with the data returned.")
-        return
+        return []
 
 
-def get_invoice(id):
+def get_invoice(invoice_id):
+    # Todo add ability to search by Invoice ID
     """
     :return: returns invoice details.
     """
-    result = __get("invoices/{0}".format(id))
+    result = __get("invoices/{0}".format(invoice_id))
     if result:
         result = Invoice(result['data'])
         return result
     else:
         print("No Results")
 
-def get_invoices(days_ago=7, filter="", value=""):
+
+def get_invoices(days_ago=0, keyword="", value=""):
     """
 
     :param days_ago: If you want to __get
@@ -156,17 +162,22 @@ def get_invoices(days_ago=7, filter="", value=""):
 
     """
 
-    result = __get("invoices", {'filter': days_ago})['data']['invoiceData']
+    result = __get("invoices", filter=days_ago)
+    if result:
+        result = result['data']['invoiceData']
+    else:
+        return []
+
     invoices = []
 
     for invoice in result:
-        if filter:
-            if filter in invoice:
-                if value in invoice[filter]:
+        if keyword:
+            if keyword in invoice:
+                if value in invoice[keyword]:
                     invoices.append(Invoice(invoice))
             else:
                 raise ValueError("Failed at Level 2")
-        elif not filter:
+        elif not keyword:
             invoices.append(Invoice(invoice))
         else:
             raise Exception("Something is wrong here!")
@@ -177,14 +188,63 @@ def get_parts():
     return __get("parts")['data']
 
 
-def get_tickets(page_size=25, page=0, status=""):
-    """Returns a list of the tickets.
-        status types are "In Progress\""""
+def get_taxed_items(tax_class_name, days_ago=7):
+    assert isinstance(tax_class_name, str)
+    detailed_invoice_list = []
+    for invoice in get_invoices(days_ago=days_ago):
+        detailed_invoice_list.append(get_invoice(invoice.__getattribute__("summary")['id']))
+
+    items_with_specified_tax = []
+    total = 0
+    for invoice in detailed_invoice_list:
+        for item in invoice['items']:
+            if tax_class_name in item['tax_class']['tax_class']:
+                items_with_specified_tax.append(item)
+                total += float(item['gst'])
+    return {"items": items_with_specified_tax, "total": round(total, 2)}
+
+
+def get_ticket(ticket_id):
+    ticket_json = __get("tickets/{0}".format(ticket_id))
+    return Ticket(ticket_json)
+
+
+def get_tickets(page_size=25, page=0, **kwargs):
+    """
+    Returns a list of the tickets.
+    a) : pagesize: number of ticket to be displayed per request
+    b) : page: refers to pagination limits e.g. Page 1,2 3 etc. Default page is identified by 0
+    c) : status: search by ticket status
+    d) : assigned_to: Send ID of the ticket assignee
+    e) : created_by: Send ID of the user who created the ticket
+    f) : from_date,to_date: earliest date to latest date. Both values not required.
+        If not set, this will return tickets for today as default.
+        To get tickets for previous dates, send an extra parameter in URL titled "filter" with values:
+        time must be entered as a string in the format: "%m-%d-%Y %H:%M:%S" OR "%m-%d-%Y"
+    Yesterday: 1
+    Last Week: 7
+    Last Month: 30
+    All: 0
+    """
     try:
-        return __get("tickets")['data']['ticketData']
+        if "from_date" in kwargs:
+            print("from_date: {0}".format(kwargs['from_date']))
+            kwargs['from_date'] = strptime(kwargs['from_date'])
+
+        if "to_date" in kwargs:
+            print("to_date: {0}".format(kwargs['to_date']))
+            kwargs['to_date'] = strptime(kwargs['to_date'])
+
+        result = __get("tickets", **kwargs)['data']['ticketData']
+        ticket_list = []
+
+        for item in result:
+            ticket_list.append(Ticket(item))
+        return ticket_list
+
     except KeyError:
         print("There was an error with the data returned.")
-        return
+        return []
 
 
 def __post(url_string_snippet, args=()):
@@ -194,11 +254,30 @@ def __post(url_string_snippet, args=()):
     return requests.post(base_url + url_string_snippet, params=payload)
 
 
+def merge_customers():
+    c_list = get_customers()
+    customer1 = c_list[0]
+    customer2 = c_list[1]
+    # decide which record to keep
+    # copy data from record to discard to record to keep
+
+    pass
+    return
+
+
 def post_customer(customer):
     return __post(json.dumps(customer))
 
 
+def post_ticket(ticket):
+    return __post(json.dumps(ticket))
+
+
 def __put(url_string_snippet, data):
+    """
+    Update
+    :type url_string_snippet: string
+    """
     payload = {'api_key': api_key}
 
     print("data = {0}".format(data))
@@ -216,6 +295,10 @@ def put_invoice(invoice):
     return __put("invoices/{0}".format(invoice.__dict__['summary']['id']), invoice.__dict__)
 
 
+def put_ticket(ticket):
+    return __put(json.dumps(ticket))
+
+
 def search(keyword):
     # search function is broken on openAPI
     return
@@ -231,4 +314,19 @@ def set_api_key(key):
     global api_key, api_key_string
     api_key = key
     api_key_string = "?api_key=" + api_key
-    return True
+
+
+def strptime(date_time_string):
+    if len(date_time_string.strip()) == 19:
+        return datetime.strptime(date_time_string, "%m-%d-%Y %H:%M:%S").timestamp()
+    elif len(date_time_string.strip()) == 10:
+        return datetime.strptime(date_time_string, "%m-%d-%Y").timestamp()
+    else:
+        raise ValueError("Improper date_time_string format")
+
+
+def total(list_to_sum, list_value):
+    total = 0
+    for item in list_to_sum:
+        total += item[list_value]
+    return total

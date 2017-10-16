@@ -1,7 +1,9 @@
 import vobject, os
+from datetime import datetime
+
+error_json = {'name': 'Too Many Requests', 'message': 'Rate limit exceeded.', 'code': 0, 'status': 429}
 
 
-# Todo: Create reverse function
 class Customer(object):
     """A customer in the RD System:
     Attributes are :
@@ -91,7 +93,7 @@ class Customer(object):
                     if isinstance(key2, type("")):
                         value = key2 + ": " + self.__getattribute__(key)[key2]
 
-            string += key + ": " + value + "\n"
+            string += key + ": " + value + " "
         return string
 
 
@@ -124,10 +126,18 @@ class Devices:
 
 
 class Invoice(object):
+    invoice_id = ""
+    iter = 0
+
     def __init__(self, invoice):
         for key in invoice:
             self.__dict__[key] = invoice[key]
-            # print("key: {0}\nvalue: {1}".format(key, self.__dict__[key]))
+        if invoice != error_json:
+            print(invoice)
+            self.invoice_id = invoice['summary']['order_id']
+
+    def __getitem__(self, item):
+        return self.__dict__[item]
 
 
 class RepairProdItems():
@@ -155,17 +165,72 @@ class Summary(object):
 
 
 class Ticket(object):
-    ticket_list = []
-    devices = []
-    ticket_data = {}
+    t_id = ""
+    statuses = ["Pending",
+                "In Progress",
+                "Repaired",
+                "Completed",
+                "Unlocked",
+                "Repaired & Collected",
+                "Waiting on Customer",
+                "Warranty Repair",
+                "Customer Reply",
+                "Cancelled",
+                "Disposed",
+                "Waiting for Parts"]
+
+    def __getitem__(self, item):
+        return self.__dict__[item]
 
     def __init__(self, ticket_object):
-        """ test """
+        if 'summary' in ticket_object:
+            for key in ticket_object:
+                self.__dict__[key] = ticket_object[key]
 
-        global ticket_list
-        global ticket_data
-        global devices
+            self.t_id = ticket_object['summary']['order_id']
 
-        for a, b in zip(ticket_object, ticket_data):
-            # print (a + "| " + b)
-            pass
+        elif 'data' in ticket_object:
+            for key in ticket_object['data']:
+                self.__dict__[key] = ticket_object['data'][key]
+            self.t_id = ticket_object['data']['summary']['order_id']
+
+    def __str__(self):
+        string = ""
+
+        def stringme(keys, key):
+            print(type(keys))
+            # if key is a string
+            if isinstance(keys[key], (str, int)):
+                print("if isinstance({0}, {1}):".format(keys, "str, int"))
+                return keys + ": " + str(keys)
+
+            elif isinstance(keys, (list, dict)):
+                print("elif inside stringme()")
+                print(type(keys))
+                for key1 in keys:
+                    return stringme(keys, key1)
+
+        """
+            else:
+                print("level 2 \n\n\n\n")
+                for key2 in self.__dict__[key]:
+                    print("for key2 in {0}:".format(self.__dict__[key]))
+                    if isinstance(key2, type("")):
+                        print("if isinstance({0}, {1}):".format(key2, type("")))
+                        value = key2 + ": " + str(self.__dict__[key][key2]) + "\n"
+"""
+        result = ""
+        for key in self.__dict__:
+            result = stringme(self.__dict__, key)
+            # string += key + ": " + value + " "
+        return result
+
+    def created_date_to_human_readable(self):
+        return datetime.fromtimestamp(self.__dict__['summary']['created_date']).strftime('%m-%d-%Y %H:%M:%S')
+
+    def __iter__(self):
+        self.__iter__()
+        return
+
+    def strptime(date_time_string):
+        return datetime.strptime(date_time_string, "%m-%d-%Y %H:%M:%S").timestamp()
