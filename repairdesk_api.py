@@ -1,15 +1,14 @@
 """python wrapper for RepairDesk OpenAPI"""
-import json, os, requests
-from objects import *
+import json
 import logging as log
-from pathlib import Path
+import requests
 from datetime import datetime
 
-ticketfile = "ticketfile.json"
+from objects import *
 
 log.basicConfig(filename='log.log',
-                format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s', \
-                datefmt='%m-%d-%Y:%H:%M:%S', \
+                format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+                datefmt='%m-%d-%Y:%H:%M:%S',
                 level=log.DEBUG)
 
 # script-wide variables
@@ -44,7 +43,6 @@ def get_api_key(self):
 
 
 def __get(url_string_snippet, **kwargs):
-
     """
 
     :rtype: json
@@ -60,13 +58,15 @@ def __get(url_string_snippet, **kwargs):
         if os.path.exists(filename):
             with open(filename, 'r') as file:
                 result = json.load(file)
-                if print_url: print(filename)
+                if print_url:
+                    print(filename)
         else:
             raise FileNotFoundError("{0} not found! Try pulling from online first.".format(filename))
     else:  # Pull from online
         result = requests.get(base_url + url_string_snippet, params=payload)
         url = result.url
-        if print_url: print(url)
+        if print_url:
+            print(url)
 
         # Write data to disk
         if save_offline and "No Result Found" not in result.text:
@@ -155,6 +155,8 @@ def get_invoice(invoice_id):
 def get_invoices(days_ago=0, keyword="", value=""):
     """
 
+    :param keyword: A search term to filter search results by. Use in conjuction with keyword.
+    :param value: Keyword value. For example, keyword=value (..., name, "John Doe")
     :param days_ago: If you want to __get
     yesterday, 7 days, 30 days pass parameter named “filter” 1 for yesterday 7 or 30 etc. If you want to __get
     all invoices send 0 in this parameter.
@@ -186,6 +188,10 @@ def get_invoices(days_ago=0, keyword="", value=""):
 
 def get_parts():
     return __get("parts")['data']
+
+
+def get_problems() -> object:
+    return __get("problems")
 
 
 def get_taxed_items(tax_class_name, days_ago=7):
@@ -296,7 +302,7 @@ def put_invoice(invoice):
 
 
 def put_ticket(ticket):
-    return __put(json.dumps(ticket))
+    return __put("ticket", json.dumps(ticket))
 
 
 def search(keyword):
@@ -305,7 +311,7 @@ def search(keyword):
 
 
 def set_api_key(key):
-    # type: (str) -> bool
+    # type: (str)
     """
 
     :type key: str

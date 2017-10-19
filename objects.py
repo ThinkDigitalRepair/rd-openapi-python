@@ -1,5 +1,7 @@
-import vobject, os
 from datetime import datetime
+
+import os
+import vobject
 
 error_json = {'name': 'Too Many Requests', 'message': 'Rate limit exceeded.', 'code': 0, 'status': 429}
 
@@ -35,8 +37,8 @@ class Customer(object):
                 self.__dict__[key] = customer[key]
                 #
                 #
-                # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email, orgonization,
-                #          refered_by, driving_licence, contact_person, tax_number, network"""
+                # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email,
+                #  orgonization, refered_by, driving_licence, contact_person, tax_number, network"""
 
     def to_vcf(self):
         j = vobject.vCard()
@@ -140,7 +142,7 @@ class Invoice(object):
         return self.__dict__[item]
 
 
-class RepairProdItems():
+class RepairProdItems:
     def __init__(self, name, device_id):
         repair_prod_item = {"name": name, "id": device_id}
         print("New repair_prod_item initialized: " + repair_prod_item['name'] + ": " +
@@ -195,35 +197,7 @@ class Ticket(object):
             self.t_id = ticket_object['data']['summary']['order_id']
 
     def __str__(self):
-        string = ""
-
-        def stringme(keys, key):
-            print(type(keys))
-            # if key is a string
-            if isinstance(keys[key], (str, int)):
-                print("if isinstance({0}, {1}):".format(keys, "str, int"))
-                return keys + ": " + str(keys)
-
-            elif isinstance(keys, (list, dict)):
-                print("elif inside stringme()")
-                print(type(keys))
-                for key1 in keys:
-                    return stringme(keys, key1)
-
-        """
-            else:
-                print("level 2 \n\n\n\n")
-                for key2 in self.__dict__[key]:
-                    print("for key2 in {0}:".format(self.__dict__[key]))
-                    if isinstance(key2, type("")):
-                        print("if isinstance({0}, {1}):".format(key2, type("")))
-                        value = key2 + ": " + str(self.__dict__[key][key2]) + "\n"
-"""
-        result = ""
-        for key in self.__dict__:
-            result = stringme(self.__dict__, key)
-            # string += key + ": " + value + " "
-        return result
+        return str(self.__dict__)
 
     def created_date_to_human_readable(self):
         return datetime.fromtimestamp(self.__dict__['summary']['created_date']).strftime('%m-%d-%Y %H:%M:%S')
@@ -232,5 +206,6 @@ class Ticket(object):
         self.__iter__()
         return
 
-    def strptime(date_time_string):
-        return datetime.strptime(date_time_string, "%m-%d-%Y %H:%M:%S").timestamp()
+    def strptime(date_time_string) -> datetime:
+        x = datetime.strptime(date_time_string, "%m-%d-%Y %H:%M:%S").timestamp()
+        return x
