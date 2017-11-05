@@ -1,8 +1,9 @@
 """python wrapper for RepairDesk OpenAPI"""
 import json
 import logging as log
+
 import requests
-from datetime import datetime
+from openpyxl import load_workbook
 
 from objects import *
 
@@ -33,7 +34,8 @@ def delete_parts(*argv):
     result = []
 
     for part in argv:
-        result.append(__delete("parts", part))
+        deletion_confirmation = __delete("parts", part)
+        result.append(deletion_confirmation)
 
     return result
 
@@ -98,7 +100,7 @@ def get_customer(customer_id):
     return Customer(customer_json)
 
 
-def get_customers(filter="", value=""):
+def get_customers(filter_by="", value=""):
     """Returns a list of only the customers in the JSON string.
     :rtype: list
     """
@@ -107,15 +109,15 @@ def get_customers(filter="", value=""):
     customers = []
 
     for customer in result['data']:
-        if filter:
-            if filter in customer:
-                if value.replace(' ', '') in customer[filter].replace(' ', ''):
+        if filter_by:
+            if filter_by in customer:
+                if value.replace(' ', '') in customer[filter_by].replace(' ', ''):
                     customers.append(Customer(customer))
             else:
-                print("{0} is not a valid key".format(filter))
+                print("{0} is not a valid key".format(filter_by))
                 print("Valid keys are {0}".format(customer.keys()))
                 break
-        elif not filter:
+        elif not filter_by:
             customers.append(Customer(customer))
         else:
             raise Exception("Something is wrong here!")
@@ -152,7 +154,7 @@ def get_invoice(invoice_id):
         print("No Results")
 
 
-def get_invoices(days_ago=0, keyword="", value=""):
+def get_invoices(days_ago=0, keyword=""):
     """
 
     :param keyword: A search term to filter search results by. Use in conjuction with keyword.
@@ -164,26 +166,12 @@ def get_invoices(days_ago=0, keyword="", value=""):
 
     """
 
-    result = __get("invoices", filter=days_ago)
+    result = __get("invoices", filter=days_ago, keyword=keyword)
     if result:
         result = result['data']['invoiceData']
     else:
-        return []
-
-    invoices = []
-
-    for invoice in result:
-        if keyword:
-            if keyword in invoice:
-                if value in invoice[keyword]:
-                    invoices.append(Invoice(invoice))
-            else:
-                raise ValueError("Failed at Level 2")
-        elif not keyword:
-            invoices.append(Invoice(invoice))
-        else:
-            raise Exception("Something is wrong here!")
-    return invoices
+        result = []
+    return result
 
 
 def get_parts():
@@ -208,6 +196,30 @@ def get_taxed_items(tax_class_name, days_ago=7):
                 items_with_specified_tax.append(item)
                 total += float(item['gst'])
     return {"items": items_with_specified_tax, "total": round(total, 2)}
+
+
+def get_taxed_items_from_xlsx(filename: str):
+    tax_class = {'MTS': 0.114}
+    invoice_xlsx = load_workbook(filename)
+    worksheet = invoice_xlsx.active
+    invoice_number_row = worksheet['A']
+    item_name_row = worksheet['D']
+    taxed_items = []
+    price_row = worksheet['G']
+    item_prices = []
+    tax_row = worksheet['H']
+    tax_charged = []
+
+    for c in range(2, len(tax_row)):
+        if tax_row[c].value == 0 or price_row[c].value == 0 or tax_row[c].value is None or price_row[c].value is None:
+            continue
+        elif tax_row[c].value / price_row[c].value == tax_class['MTS']:
+            taxed_items.append("From invoice: {0} - {1}".format(invoice_number_row[c].value, item_name_row[c].value))
+            item_prices.append(price_row[c].value)
+            tax_charged.append(tax_row[c].value)
+    return {'tax_items': taxed_items, 'tax_charged': tax_charged, 'item_price_sum': round(sum(item_prices)),
+            'total': round(sum(tax_charged), 2)}
+
 
 
 def get_ticket(ticket_id):
@@ -253,17 +265,21 @@ def get_tickets(page_size=25, page=0, **kwargs):
         return []
 
 
-def __post(url_string_snippet, args=()):
+def __post(url_string_snippet: str, **kwargs) -> object:
+    """
+
+    :rtype: object
+    """
     payload = {'api_key': api_key}
-    payload.update(args)
 
-    return requests.post(base_url + url_string_snippet, params=payload)
+    result = requests.post(base_url + url_string_snippet, kwargs, params=payload)
+    print("requests.post(\"{0}\", data={1})".format(result.url, kwargs))
+    return result
 
 
-def merge_customers():
-    c_list = get_customers()
-    customer1 = c_list[0]
-    customer2 = c_list[1]
+def merge_customers(customer1, customer2):
+    customer1
+    customer2
     # decide which record to keep
     # copy data from record to discard to record to keep
 
@@ -272,11 +288,26 @@ def merge_customers():
 
 
 def post_customer(customer):
-    return __post(json.dumps(customer))
+    return __post("customers", json={"first_name": "Test", "last_name": "Customer2", "email": "noone2@example.com"})
+    # return requests.post("http://httpbin.org/post", data={"first name": "Test", "last_name": "Customer2", "email": "noone2@example.com"})
+
+
+def post_payment(invoice_id: str, amount: int, payment_date: str, method: str, notes: str) -> object:
+    """
+    Adds payment to invoice
+        Request Sample:
+        {"amount":"30.00","payment_date":"1472122800","method":"Cash","notes":"Test
+        Notes"}
+    :return:
+    """
+    payment_date = int(strptime(payment_date))
+    return __post("invoices/{0}/payments".format(invoice_id),
+                  json={"amount": amount, "payment_date": payment_date, "method": method,
+                        "notes": notes})
 
 
 def post_ticket(ticket):
-    return __post(json.dumps(ticket))
+    return __post("tickets", json=ticket.__dict__)
 
 
 def __put(url_string_snippet, data):
@@ -311,11 +342,10 @@ def search(keyword):
 
 
 def set_api_key(key):
-    # type: (str)
     """
 
     :type key: str
-    :rtype: bool
+    :rtype: None
     """
     global api_key, api_key_string
     api_key = key
@@ -323,12 +353,18 @@ def set_api_key(key):
 
 
 def strptime(date_time_string):
-    if len(date_time_string.strip()) == 19:
+    """
+
+    :param date_time_string: "%m-%d-%Y %H:%M:%S"
+    :return: timestamp
+    """
+    if len(date_time_string.replace(" ", "")) == 17:
         return datetime.strptime(date_time_string, "%m-%d-%Y %H:%M:%S").timestamp()
     elif len(date_time_string.strip()) == 10:
         return datetime.strptime(date_time_string, "%m-%d-%Y").timestamp()
     else:
-        raise ValueError("Improper date_time_string format")
+        raise ValueError(
+            "Improper date_time_string format: {0}; len={1}".format(date_time_string, len(date_time_string)))
 
 
 def total(list_to_sum, list_value):

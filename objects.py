@@ -1,6 +1,6 @@
+import os
 from datetime import datetime
 
-import os
 import vobject
 
 error_json = {'name': 'Too Many Requests', 'message': 'Rate limit exceeded.', 'code': 0, 'status': 429}
@@ -35,6 +35,11 @@ class Customer(object):
         else:
             for key in customer:
                 self.__dict__[key] = customer[key]
+        print(self.__dict__)
+
+        if "fullName" in self.__dict__:
+            name = self.__getattribute__('fullName').split()
+            self.first_name, self.last_name = name[0], name[1] if len(name) > 1 else ''
                 #
                 #
                 # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email,
