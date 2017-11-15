@@ -5,6 +5,7 @@ import logging as log
 import requests
 from openpyxl import load_workbook
 
+from error import *
 from objects import *
 
 log.basicConfig(filename='log.log',
@@ -87,12 +88,21 @@ def __get(url_string_snippet, **kwargs):
     return result
 
 
-def get_csv():
-    # TODO: Convert wget string to requests string for CSV file. PHPSESSID is necessary for grabbing of files
-    # TODO: Find out if there is a way to crawl/ index website endpoints and files with a sessionID
-    # wget - O
-    # result.csv - -no - cookies - -header = 'Cookie:PHPSESSID=ofpt96b2abpoluutl2sb7hp9e2' 'https://app.repairdesk.co/index.php?r=invoice/export2CSV&keyword=&prod_type=&status=&to=&from=&pagesize=50'"
-    return
+def get_xlsx(keyword: str = "", prod_type: str = "", status: str = "", to_date: str = "30 Sep, 2017",
+             from_date: str = "01 Jul, 2017", pagesize: int = 50) -> object:
+    if logged_in:
+        payload = {'r': 'invoice/export2CSV', 'keyword': keyword, 'prod_type': '', 'status': '', 'to': to_date,
+                   'from': from_date, 'pagesize': pagesize}
+        xlsx = session.get(url="https://app.repairdesk.co/index.php")
+
+        if save_offline:
+            with open('invoice.xlsx', 'wb') as f:
+                f.write(xlsx.content)
+                f.close()
+        return xlsx
+    else:
+
+        return False
 
 
 def get_customer(customer_id):
@@ -198,9 +208,15 @@ def get_taxed_items(tax_class_name, days_ago=7):
     return {"items": items_with_specified_tax, "total": round(total, 2)}
 
 
-def get_taxed_items_from_xlsx(filename: str):
+def get_taxed_items_from_xlsx(exclude: list, filename: str = ""):
+    """
+
+    :exclude: list: a list of strings to exclude from result
+    """
+    # TODO: Enter options for filter
     tax_class = {'MTS': 0.114}
-    invoice_xlsx = load_workbook(filename)
+    invoice_xlsx = load_workbook(filename) if filename else get_xlsx()
+    assert invoice_xlsx
     worksheet = invoice_xlsx.active
     invoice_number_row = worksheet['A']
     item_name_row = worksheet['D']
@@ -213,13 +229,13 @@ def get_taxed_items_from_xlsx(filename: str):
     for c in range(2, len(tax_row)):
         if tax_row[c].value == 0 or price_row[c].value == 0 or tax_row[c].value is None or price_row[c].value is None:
             continue
-        elif tax_row[c].value / price_row[c].value == tax_class['MTS']:
+        elif tax_row[c].value / price_row[c].value == tax_class['MTS'] and item_name_row[c].value not in exclude:
+            print("{0} not in exclude[]".format(item_name_row[c].value))
             taxed_items.append("From invoice: {0} - {1}".format(invoice_number_row[c].value, item_name_row[c].value))
             item_prices.append(price_row[c].value)
             tax_charged.append(tax_row[c].value)
-    return {'tax_items': taxed_items, 'tax_charged': tax_charged, 'item_price_sum': round(sum(item_prices)),
+    return {'taxed_items': taxed_items, 'tax_charged': tax_charged, 'total_gross': round(sum(item_prices)),
             'total': round(sum(tax_charged), 2)}
-
 
 
 def get_ticket(ticket_id):
@@ -265,16 +281,39 @@ def get_tickets(page_size=25, page=0, **kwargs):
         return []
 
 
-def __post(url_string_snippet: str, **kwargs) -> object:
+def __post(url_string_snippet: str, data: dict, **kwargs) -> object:
     """
 
     :rtype: object
     """
     payload = {'api_key': api_key}
 
-    result = requests.post(base_url + url_string_snippet, kwargs, params=payload)
+    result = requests.post(base_url + url_string_snippet, params=payload, data=data)
     print("requests.post(\"{0}\", data={1})".format(result.url, kwargs))
     return result
+
+
+def login(username: str, password: str) -> bool:
+    login_url = "https://app.repairdesk.co/index.php"
+    username_field = "LoginForm[username]"
+    password_field = "LoginForm[password]"
+    auth = ('user', 'pass')
+    payload = {username_field: username, password_field: password}
+
+    global session
+    session = requests.Session()
+    session = session.post(auth=auth, url=login_url, data=payload)
+
+    global logged_in
+
+    if "Incorrect Email or password" in session.text:
+        log.log(level=30, msg="User not logged in successfully")
+        logged_in = False
+        raise NotLoggedInError(expression="Expression", message="User not logged in successfully")
+    else:
+        logged_in = True
+
+    return logged_in
 
 
 def merge_customers(customer1, customer2):
@@ -288,8 +327,21 @@ def merge_customers(customer1, customer2):
 
 
 def post_customer(customer):
-    return __post("customers", json={"first_name": "Test", "last_name": "Customer2", "email": "noone2@example.com"})
-    # return requests.post("http://httpbin.org/post", data={"first name": "Test", "last_name": "Customer2", "email": "noone2@example.com"})
+    data = {}
+
+    for key, value in customer.__dict__.items():
+        data[key] = value
+
+    return __post("customers", data=data)
+
+
+def post_invoice(invoice):
+    data = {}
+
+    for key, value in invoice.__dict__.items():
+        data[key] = value
+
+    return __post("invoices", data=data)
 
 
 def post_payment(invoice_id: str, amount: int, payment_date: str, method: str, notes: str) -> object:
@@ -307,7 +359,12 @@ def post_payment(invoice_id: str, amount: int, payment_date: str, method: str, n
 
 
 def post_ticket(ticket):
-    return __post("tickets", json=ticket.__dict__)
+    data = {}
+
+    for key, value in ticket.__dict__.items():
+        data[key] = value
+
+    return __post("tickets", data=data)
 
 
 def __put(url_string_snippet, data):
@@ -371,4 +428,3 @@ def total(list_to_sum, list_value):
     total = 0
     for item in list_to_sum:
         total += item[list_value]
-    return total

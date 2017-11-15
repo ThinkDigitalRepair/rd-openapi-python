@@ -35,15 +35,33 @@ class Customer(object):
         else:
             for key in customer:
                 self.__dict__[key] = customer[key]
-        print(self.__dict__)
 
         if "fullName" in self.__dict__:
             name = self.__getattribute__('fullName').split()
-            self.first_name, self.last_name = name[0], name[1] if len(name) > 1 else ''
-                #
-                #
-                # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email,
-                #  orgonization, refered_by, driving_licence, contact_person, tax_number, network"""
+            self.__dict__['first_name'], self.__dict__['last_name'] = name[0], name[1] if len(name) > 1 else ''
+
+            #
+            #
+            # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email,
+            #  orgonization, refered_by, driving_licence, contact_person, tax_number, network"""
+
+    def get_email(self):
+        return self.__dict__['email']
+
+    def get_first_name(self):
+        return self.__dict__['first_name']
+
+    def get_last_name(self):
+        if 'last_name' in self.__dict__:
+            return self.__dict__['last_name']
+        else:
+            return "No Last Name"
+
+    def get_mobile(self):
+        return self.__dict__['mobile']
+
+    def get_phone(self):
+        return self.__dict__['phone']
 
     def to_vcf(self):
         j = vobject.vCard()
