@@ -1,7 +1,10 @@
 import os
 from datetime import datetime
+from pprint import pprint
 
 import vobject
+from jsondiff import diff as jsondiff
+from jsonmerge import merge as jsonmerge
 
 error_json = {'name': 'Too Many Requests', 'message': 'Rate limit exceeded.', 'code': 0, 'status': 429}
 
@@ -29,6 +32,8 @@ class Customer(object):
     """
 
     def __init__(self, customer):
+        self.json = customer
+
         if 'data' in customer:
             for key in customer['data']:
                 self.__dict__[key] = customer['data'][key]
@@ -111,11 +116,13 @@ class Customer(object):
         string = ""
 
         for key in self.__dict__:
+            if key == 'json':
+                continue
             if isinstance(self.__getattribute__(key), type("")):
                 value = self.__getattribute__(key)
             else:
                 for key2 in self.__getattribute__(key):
-                    if isinstance(key2, type("")):
+                    if isinstance(key2, str):
                         value = key2 + ": " + self.__getattribute__(key)[key2]
 
             string += key + ": " + value + " "
@@ -155,6 +162,8 @@ class Invoice(object):
     iter = 0
 
     def __init__(self, invoice):
+        self.json = invoice
+
         for key in invoice:
             self.__dict__[key] = invoice[key]
         if invoice != error_json:
@@ -208,6 +217,8 @@ class Ticket(object):
         return self.__dict__[item]
 
     def __init__(self, ticket_object):
+        self.json = ticket_object
+
         if 'summary' in ticket_object:
             for key in ticket_object:
                 self.__dict__[key] = ticket_object[key]
@@ -232,3 +243,41 @@ class Ticket(object):
     def strptime(date_time_string) -> datetime:
         x = datetime.strptime(date_time_string, "%m-%d-%Y %H:%M:%S").timestamp()
         return x
+
+
+def diff(obj1, obj2=None):
+    """"Compare objects and return the differences."""
+    print("function: diff()\n========================================================")
+    if obj1 and obj2:
+        difference = jsondiff(obj1.json, obj2.json)
+    elif isinstance(obj1, list) and not obj2:
+        difference = jsondiff(obj1[0].json, obj1[1].json)
+    else:
+        raise ValueError("{0} and {1} are not valid objects".format(obj1, obj2))
+
+    difference['data'].pop(
+        'cid')  # cid should always be different. We don't want to merge this, so we're removing it. .
+
+    print("function: End diff()\n========================================================")
+    return difference
+
+
+def merge(obj1=None, obj2=None):
+    print("function: merge()\n========================================================")
+    if not obj1 and not obj2:
+        obj1 = {"cid": "1", "first_name": "Test", "last_name": "Customer", "phone": "", "mobile": "+1 555-555-5555",
+                "address1": "", "address2": "", "postcode": "", "city": "", "state": "", "country": "United States",
+                "email": "noone@example.com", "orgonization": "", "refered_by": "", "driving_licence": "",
+                "contact_person": "", "tax_number": "", "network": "Verizon",
+                "customer_group": {"id": "1", "name": "Individual"}}
+        obj2 = {"cid": "2", "first_name": "Test", "last_name": "Customer", "phone": "760-534-8118",
+                "mobile": "+1 555-555-5234",
+                "address1": "", "address2": "", "postcode": "", "city": "", "state": "", "country": "United States",
+                "email": "noone1@example.com", "orgonization": "", "refered_by": "", "driving_licence": "",
+                "contact_person": "", "tax_number": "", "network": "Verizon",
+                "customer_group": {"id": "12", "name": "Individual"}}
+
+    result = jsonmerge(obj1, obj2)
+    pprint(result, width=20)
+    print("function: End merge()\n========================================================")
+    return result

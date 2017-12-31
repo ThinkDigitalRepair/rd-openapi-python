@@ -52,7 +52,7 @@ def __get(url_string_snippet, **kwargs):
     :param kwargs: dict containing keys and values for the URL
     :type url_string_snippet: string
     """
-    print_url = True
+    print_url = False
     filename = "./" + url_string_snippet + ".json"
     payload = {'api_key': api_key}
     payload.update(kwargs)
