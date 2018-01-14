@@ -1,12 +1,29 @@
 import os
 from datetime import datetime
-from pprint import pprint
 
 import vobject
-from jsondiff import diff as jsondiff
-from jsonmerge import merge as jsonmerge
+from dateutil.tz import tzlocal
 
 error_json = {'name': 'Too Many Requests', 'message': 'Rate limit exceeded.', 'code': 0, 'status': 429}
+
+
+def strptime(date_time_string):
+    """
+
+    :param date_time_string:
+    :return: Return a string representing the time in datetime format
+    """
+    x = datetime.strptime(str(date_time_string), "%m-%d-%Y %H:%M:%S").timestamp()
+    return x
+
+
+def to_human_readable(date_time):
+    """
+
+    :return: a string containing the date and time in a human-readable format.
+    """
+
+    return datetime.fromtimestamp(date_time).astimezone(tzlocal()).ctime()
 
 
 class Customer(object):
@@ -31,12 +48,16 @@ class Customer(object):
     network
     """
 
-    def __init__(self, customer):
-        self.json = customer
+    def __init__(self, customer=None):
 
-        if 'data' in customer:
+        if not isinstance(customer, dict) and hasattr(customer, 'json'):
+            customer = customer.json
+        else:
+            self.json = customer
+        if self.json and 'data' in self.json:
             for key in customer['data']:
                 self.__dict__[key] = customer['data'][key]
+                print(key)
         else:
             for key in customer:
                 self.__dict__[key] = customer[key]
@@ -49,6 +70,9 @@ class Customer(object):
             #
             # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email,
             #  orgonization, refered_by, driving_licence, contact_person, tax_number, network"""
+
+    def __contains__(self, value):
+        return True if value in self.__dict__ else False
 
     def get_email(self):
         return self.__dict__['email']
@@ -163,11 +187,10 @@ class Invoice(object):
 
     def __init__(self, invoice):
         self.json = invoice
+        self.human_readable_date = to_human_readable(invoice['summary']['created_date'])
 
         for key in invoice:
             self.__dict__[key] = invoice[key]
-        if invoice != error_json:
-            print(invoice)
             self.invoice_id = invoice['summary']['order_id']
 
     def __getitem__(self, item):
@@ -237,47 +260,4 @@ class Ticket(object):
         return datetime.fromtimestamp(self.__dict__['summary']['created_date']).strftime('%m-%d-%Y %H:%M:%S')
 
     def __iter__(self):
-        self.__iter__()
-        return
-
-    def strptime(date_time_string) -> datetime:
-        x = datetime.strptime(date_time_string, "%m-%d-%Y %H:%M:%S").timestamp()
-        return x
-
-
-def diff(obj1, obj2=None):
-    """"Compare objects and return the differences."""
-    print("function: diff()\n========================================================")
-    if obj1 and obj2:
-        difference = jsondiff(obj1.json, obj2.json)
-    elif isinstance(obj1, list) and not obj2:
-        difference = jsondiff(obj1[0].json, obj1[1].json)
-    else:
-        raise ValueError("{0} and {1} are not valid objects".format(obj1, obj2))
-
-    difference['data'].pop(
-        'cid')  # cid should always be different. We don't want to merge this, so we're removing it. .
-
-    print("function: End diff()\n========================================================")
-    return difference
-
-
-def merge(obj1=None, obj2=None):
-    print("function: merge()\n========================================================")
-    if not obj1 and not obj2:
-        obj1 = {"cid": "1", "first_name": "Test", "last_name": "Customer", "phone": "", "mobile": "+1 555-555-5555",
-                "address1": "", "address2": "", "postcode": "", "city": "", "state": "", "country": "United States",
-                "email": "noone@example.com", "orgonization": "", "refered_by": "", "driving_licence": "",
-                "contact_person": "", "tax_number": "", "network": "Verizon",
-                "customer_group": {"id": "1", "name": "Individual"}}
-        obj2 = {"cid": "2", "first_name": "Test", "last_name": "Customer", "phone": "760-534-8118",
-                "mobile": "+1 555-555-5234",
-                "address1": "", "address2": "", "postcode": "", "city": "", "state": "", "country": "United States",
-                "email": "noone1@example.com", "orgonization": "", "refered_by": "", "driving_licence": "",
-                "contact_person": "", "tax_number": "", "network": "Verizon",
-                "customer_group": {"id": "12", "name": "Individual"}}
-
-    result = jsonmerge(obj1, obj2)
-    pprint(result, width=20)
-    print("function: End merge()\n========================================================")
-    return result
+        return self.__iter__()
