@@ -30,7 +30,7 @@ class Customer(object):
     """A customer in the RD System:
     Attributes are :
     fullName
-    cid
+    cid 
     phone
     mobile
     address1
