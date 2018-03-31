@@ -1,7 +1,9 @@
 """python wrapper for RepairDesk OpenAPI"""
 import json
 import logging as log
+import time
 
+import jsonpickle
 import requests
 from Levenshtein import ratio
 from jsondiff import diff as jsondiff
@@ -31,7 +33,6 @@ class RepairDesk:
         self.save_offline = True  # Indicates whether to save to local file
         self.offline_mode = read_offline
 
-        self.customers = self.get_customers()
         self.last_refresh = datetime.now()
 
         self.session = requests.Session()
@@ -62,13 +63,7 @@ class RepairDesk:
         return difference
 
     def delete_parts(self, *argv):
-        result = []
-
-        for part in argv:
-            deletion_confirmation = self.__delete("parts", part)
-            result.append(deletion_confirmation)
-
-        return result
+        return [self.__delete("parts", part) for part in argv]
 
     def __get(self, url_string_snippet, print_url=False, **kwargs):
         """
@@ -84,15 +79,15 @@ class RepairDesk:
         payload = {'api_key': self.api_key}
         payload.update(kwargs)
 
-        if self.offline_mode:  # Pull from online
+        if self.offline_mode:  # Pull from offline
             try:
                 with open(filename, 'r') as file:
-                    result = json.load(file)
+                    result = jsonpickle.decode(file.read())
                     if print_url:
                         print(filename)
             except FileNotFoundError:  # File doesn't exist
-                print("{0} not found! Try pulling from online first.".format(filename))
-                return
+                raise FileNotFoundError("{0} not found! Try pulling from online first.".format(filename))
+
         else:  # Pull from online
             result = requests.get(base_url + url_string_snippet, params=payload)
             url = result.url
@@ -107,7 +102,7 @@ class RepairDesk:
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
                 with open(filename, "w+") as out:  # Save data to file
                     # out.write(datetime.now().__str__() + "\n")
-                    out.write(json.dumps(result))
+                    out.write(jsonpickle.encode(result))
                     out.close()
             else:  # If there is no data to return
                 print("No results found with this criteria.")
@@ -120,22 +115,30 @@ class RepairDesk:
         if logged_in:
             payload = {'r': 'invoice/export2CSV', 'keyword': keyword, 'prod_type': '', 'status': '', 'to': to_date,
                        'from': from_date, 'pagesize': pagesize}
-            xlsx = self.session.get(url="https://app.repairdesk.co/index.php")
-
+            xlsx = self.session.get(url="https://app.repairdesk.co/index.php", params=payload)
             if self.save_offline:
                 with open('invoice.xlsx', 'wb') as f:
                     f.write(xlsx.content)
                     f.close()
-            return xlsx
+            return xlsx.content
         else:
-
             return False
 
     def get_customer(self, customer_id=0, phone_number=0):
+        """
+        Find and return customer object based on ID or phone number
+        :param customer_id:
+        :param phone_number:
+        :return:
+        """
         # TODO: edit to account for all possibilities
         if phone_number != 0 and customer_id == 0:
             try:
-                return Customer(self.__get("customers", keyword=phone_number)['data'][0])
+                results = self.__get("customers", keyword=str(phone_number))['data']
+                if len(results) > 1:
+                    return [Customer(result) for result in results]
+
+                return Customer(results[0])
             except (IndexError, KeyError):  # If customer is not found in your records, this will return an IndexError
                 # WARNING: May cause issues in the future by not returning a customer object
                 return None
@@ -144,8 +147,8 @@ class RepairDesk:
             customer_json = self.__get("customers/{0}".format(customer_id))
         return Customer(customer_json)
 
-    # noinspection PyUnresolvedReferences
-    def get_customers(self, filter_by="", value=""):
+    @property
+    def customers(self, filter_by="", value=""):
         """Returns a list of only the customers in the JSON string.
         :rtype: list
         """
@@ -209,9 +212,7 @@ class RepairDesk:
 
         result = self.__get("invoices", filter=days_ago, keyword=keyword)
         if result not in [None, {}] and result['success'] and 'invoiceData' in result['data']:
-            invoices = []
-            for invoice in result['data']['invoiceData']:
-                invoices.append(Invoice(invoice))
+            invoices = [Invoice(invoice) for invoice in result['data']['invoiceData']]
             return invoices
         else:
             return [None]
@@ -239,8 +240,13 @@ class RepairDesk:
     def get_taxed_items(self, tax_class_name, days_ago=7):
         assert isinstance(tax_class_name, str)
         detailed_invoice_list = []
-        for invoice in self.get_invoices(days_ago=days_ago):
-            detailed_invoice_list.append(self.get_invoice(invoice.self.__getattribute__("summary")['id']))
+        invoices = self.get_invoices(days_ago=days_ago)
+        add_sleep = True if len(invoices) > 50 else False
+        for invoice in invoices:
+            get_invoice = self.get_invoice(invoice.__getattribute__("summary")['id'])
+            if add_sleep:
+                print("sleeping")
+                time.sleep(60 / 50)
 
         items_with_specified_tax = []
         total = 0
@@ -251,13 +257,14 @@ class RepairDesk:
                     total += float(item['gst'])
         return {"items": items_with_specified_tax, "total": round(total, 2)}
 
-    def get_taxed_items_from_xlsx(self, exclude: list, filename: str = ""):
+    def get_taxed_items_from_xlsx(self, exclude: list = [], filename: str = ""):
         """
 
         :exclude: list: a list of strings to exclude from result
         """
         # TODO: Enter options for filter
         tax_class = {'MTS': 0.114}
+        # invoice_xlsx is of type <openpyxl.workbook.workbook.Workbook>
         invoice_xlsx = load_workbook(filename) if filename else self.get_xlsx()
         assert invoice_xlsx
         worksheet = invoice_xlsx.active
@@ -274,13 +281,13 @@ class RepairDesk:
                     price_row[c].value is None:
                 continue
             elif tax_row[c].value / price_row[c].value == tax_class['MTS'] and item_name_row[c].value not in exclude:
-                print("{0} not in exclude[]".format(item_name_row[c].value))
                 taxed_items.append(
                     "From invoice: {0} - {1}".format(invoice_number_row[c].value, item_name_row[c].value))
                 item_prices.append(price_row[c].value)
                 tax_charged.append(tax_row[c].value)
+
         return {'taxed_items': taxed_items, 'tax_charged': tax_charged, 'total_gross': round(sum(item_prices)),
-                'total': round(sum(tax_charged), 2)}
+                'total_tax_collected': round(sum(tax_charged), 2)}
 
     def get_ticket(self, ticket_id):
         ticket_json = self.__get("tickets/{0}".format(ticket_id))
@@ -313,10 +320,8 @@ class RepairDesk:
                 kwargs['to_date'] = self.strptime(kwargs['to_date'])
 
             result = self.__get("tickets", **kwargs)['data']['ticketData']
-            ticket_list = []
+            ticket_list = [Ticket(item) for item in result]
 
-            for item in result:
-                ticket_list.append(Ticket(item))
             return ticket_list
 
         except KeyError:
@@ -342,11 +347,11 @@ class RepairDesk:
             auth = ('user', 'pass')
             payload = {username_field: username, password_field: password}
 
-            self.session = self.session.post(auth=auth, url=login_url, data=payload)
+            login = self.session.post(auth=auth, url=login_url, data=payload)
 
             global logged_in
 
-            if "Incorrect Email or password" in self.session.text:
+            if "Incorrect Email or password" in login.text:
                 log.log(level=30, msg="User not logged in successfully")
                 logged_in = False
                 raise NotLoggedInError(expression="Expression", message="User not logged in successfully")

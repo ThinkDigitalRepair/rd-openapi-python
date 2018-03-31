@@ -56,18 +56,18 @@ class Customer(object):
             self.json = customer
         if self.json and 'data' in self.json:
             for key in customer['data']:
-                self.__dict__[key] = customer['data'][key]
+                # self.__dict__[key] = customer['data'][key]
+                setattr(self, key, customer['data'][key])
                 print(key)
         else:
             for key in customer:
-                self.__dict__[key] = customer[key]
+                # self.__dict__[key] = customer[key]
+                setattr(self, key, customer[key])
 
         if "fullName" in self.__dict__:
             name = self.__getattribute__('fullName').split()
             self.__dict__['first_name'], self.__dict__['last_name'] = name[0], name[1] if len(name) > 1 else ''
 
-            #
-            #
             # """ fullName, cid, phone, mobile, address1, address2, postcode, city, state, country, email,
             #  orgonization, refered_by, driving_licence, contact_person, tax_number, network"""
 
@@ -93,6 +93,10 @@ class Customer(object):
         return self.__dict__['phone']
 
     def to_vcf(self):
+        """
+        Exports a VCF of the customer and writes it to a file
+        :return: the vcf object
+        """
         j = vobject.vCard()
         j.add('n')
         if 'first_name' in self.__dict__:
@@ -124,7 +128,6 @@ class Customer(object):
         b = add_value('tel', self.__getattribute__('phone').replace(" ", ""), 'Contact Number')  # removing spaces
         c = add_value('email', self.__getattribute__('email'), 'Home')
 
-        j.prettyPrint()
         j.serialize()
 
         filename = './contacts/{0}{1}.vcf'.format(first_name, last_name)
@@ -133,6 +136,7 @@ class Customer(object):
             vcf.write(j.serialize())
             vcf.close()
 
+        return j
     def __repr__(self):
         return self.__str__()
 
