@@ -360,20 +360,19 @@ class RepairDesk:
                 return logged_in
 
     @staticmethod
-    def merge(obj1=None, obj2=None):
+    def merge(object_list: list):
         print("function: merge()\n========================================================")
-        if not obj1 and not obj2:
-            obj1 = {"cid": "1", "first_name": "Test", "last_name": "Customer", "phone": "", "mobile": "+1 555-555-5555",
-                    "address1": "", "address2": "", "postcode": "", "city": "", "state": "", "country": "United States",
-                    "email": "noone@example.com", "orgonization": "", "refered_by": "", "driving_licence": "",
-                    "contact_person": "", "tax_number": "", "network": "Verizon",
-                    "customer_group": {"id": "1", "name": "Individual"}}
-            obj2 = {"cid": "2", "first_name": "Test", "last_name": "Customer", "phone": "760-534-8118",
-                    "mobile": "+1 555-555-5234",
-                    "address1": "", "address2": "", "postcode": "", "city": "", "state": "", "country": "United States",
-                    "email": "noone1@example.com", "orgonization": "", "refered_by": "", "driving_licence": "",
-                    "contact_person": "", "tax_number": "", "network": "Verizon",
-                    "customer_group": {"id": "12", "name": "Individual"}}
+        comparison_dict = {}
+
+        #looping through variables
+        for value in vars(object_list[0]):
+            comparison_dict[value] = set()
+            for a in object_list:
+                try:
+                    comparison_dict[value].add(a.__getitem__(value))
+                except TypeError:
+                    comparison_dict[value].add(str(a.__getitem__(value)))
+
 
         result = jsonmerge(obj1, obj2)
 

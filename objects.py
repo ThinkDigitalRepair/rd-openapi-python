@@ -155,6 +155,10 @@ class Customer(object):
 
             string += key + ": " + value + " "
         return string
+    
+    def __getitem__(self, item):
+        return self.__getattribute__(item)
+
 
 
 class Devices:
