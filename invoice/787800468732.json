@@ -1,1 +1,0 @@
-{"success": false, "statusCode": 404, "message": "Not Found", "data": {"name": "Not Found", "message": "Page not found.", "code": 0, "status": 404, "previous": {"name": "Invalid Route", "message": "Unable to resolve the request: v1/invoice/787800468732", "code": 0}}}
